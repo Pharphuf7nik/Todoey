@@ -8,8 +8,9 @@
 
 import UIKit
 import CoreData
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
     
     var categories = [Category]()
     
@@ -28,11 +29,16 @@ class CategoryViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         let category = categories[indexPath.row]
         
         cell.textLabel?.text = category.name
+        
+        guard let backgroundColor = UIColor(hexString: category.color!) else { fatalError("Invalid hex string.") }
+        
+        cell.textLabel?.textColor = ContrastColorOf(backgroundColor, returnFlat: true)
+        cell.backgroundColor = backgroundColor
         
         return cell
     }
@@ -45,10 +51,10 @@ class CategoryViewController: UITableViewController {
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "goToItems" {
-            let destinationVC = segue.destination as! ToDoListViewController
+            let destinationViewController = segue.destination as! ToDoListViewController
             
             if let indexPath = tableView.indexPathForSelectedRow {
-                destinationVC.selectedCategory = categories[indexPath.row]
+                destinationViewController.selectedCategory = categories[indexPath.row]
             }
             
         }
@@ -64,6 +70,7 @@ class CategoryViewController: UITableViewController {
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
             let newCategory = Category(context: self.context)
             newCategory.name = textField.text
+            newCategory.color = UIColor.randomFlat.hexValue()
             
             self.categories.append(newCategory)
             
@@ -101,4 +108,11 @@ class CategoryViewController: UITableViewController {
         
         tableView.reloadData()
     }
+    
+    override func delete(at indexPath: IndexPath) {
+        context.delete(categories[indexPath.row])
+        categories.remove(at: indexPath.row)
+        saveCategories()
+    }
+    
 }

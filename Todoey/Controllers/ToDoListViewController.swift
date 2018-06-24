@@ -8,10 +8,13 @@
 
 import UIKit
 import CoreData
+import ChameleonFramework
 
-class ToDoListViewController: UITableViewController {
+class ToDoListViewController: SwipeTableViewController {
 
     var items = [Item]()
+    
+    @IBOutlet weak var searchBar: UISearchBar!
     
     var selectedCategory: Category? {
         didSet {
@@ -24,6 +27,30 @@ class ToDoListViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
     }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        guard let colorHex = selectedCategory?.color else { fatalError("Selected category doesn't exist.") }
+        
+        updateNavigationBar(withColorHex: colorHex)
+        
+        title = selectedCategory?.name
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        updateNavigationBar(withColorHex: "1D9BF6")
+    }
+    
+    //MARK: - Navigation Bar Setup Methods
+    
+    func updateNavigationBar(withColorHex colorHex: String) {
+        guard let navigationBar = navigationController?.navigationBar else { fatalError("Navigation controller doesn't exist.") }
+        guard let color = UIColor(hexString: colorHex) else { fatalError("Invalid hex string.") }
+        
+        navigationBar.barTintColor = color
+        navigationBar.tintColor = ContrastColorOf(color, returnFlat: true)
+        searchBar.barTintColor = color
+        navigationBar.largeTitleTextAttributes = [NSAttributedStringKey.foregroundColor: ContrastColorOf(color, returnFlat: true)]
+    }
 
     //MARK: - TableView DataSource Methods
     
@@ -32,11 +59,16 @@ class ToDoListViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         let item = items[indexPath.row]
         
         cell.textLabel?.text = item.title
+        
+        if let color = color(forRowAt: indexPath) {
+            cell.backgroundColor = color
+            cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+        }
         
         cell.accessoryType = item.isDone ? .checkmark : .none
         
@@ -109,6 +141,18 @@ class ToDoListViewController: UITableViewController {
         }
         
         tableView.reloadData()
+    }
+    
+    override func delete(at indexPath: IndexPath) {
+        context.delete(items[indexPath.row])
+        items.remove(at: indexPath.row)
+        saveItems()
+    }
+    
+    //MARK: - Misc.
+    
+    func color(forRowAt indexPath: IndexPath) -> UIColor? {
+        return UIColor(hexString: selectedCategory!.color!)?.darken(byPercentage: (CGFloat(indexPath.row) / CGFloat(items.count)) * 0.7)
     }
 
 }
